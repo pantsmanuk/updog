@@ -32,7 +32,9 @@ def parse_arguments():
     parser.add_argument('-p', '--port', type=int, default=9090,
                         help='Port to serve [Default=9090]')
     parser.add_argument('--password', type=str, default='', help='Use a password to access the page. (No username)')
-    parser.add_argument('--ssl', action='store_true', help='Use an encrypted connection')
+    parser.add_argument('--ssl', action='store_true', help='Use an encrypted connection (temporary cert/key)')
+    parser.add_argument('--cert', action='store_true', help='Use an encrypted connection (existing cert)')
+    parser.add_argument('--key', action='store_true', help='Use an encrypted connection (existing key)')
     parser.add_argument('--version', action='version', version='%(prog)s v'+VERSION)
 
     args = parser.parse_args()
@@ -45,6 +47,14 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
+
+    ssl_context = None
+    if args.ssl:
+        if (args.cert and args.key is None) or (args.cert is None and args.key):
+            error('Both --cert and --key must be supplied!')
+        elif args.cert and args.key:
+            ssl_context = (args.cert, args.key)
+        ssl_context = 'adhoc'
 
     app = Flask(__name__)
     auth = HTTPBasicAuth()
@@ -172,10 +182,6 @@ def main():
         print()
         error('Exiting!')
     signal.signal(signal.SIGINT, handler)
-
-    ssl_context = None
-    if args.ssl:
-        ssl_context = 'adhoc'
 
     run_simple("0.0.0.0", int(args.port), app, ssl_context=ssl_context)
 
